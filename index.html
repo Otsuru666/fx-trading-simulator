@@ -1467,7 +1467,7 @@
                         stats[trade.currency].total++;
                         if (trade.result === '利確') stats[trade.currency].win++;
                         else if (trade.result === '損切り') stats[trade.currency].loss++;
-                        else if (trade.result === '建値撤退') stats[trade.currency].breakEven;
+                        else if (trade.result === '建値撤退') stats[trade.currency].breakEven++;
                     });
 
                     Object.keys(stats).forEach(pair => {
