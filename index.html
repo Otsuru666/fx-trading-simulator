@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FX収益シミュレーター - よすが式 | Fintokei攻略</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-blue: #58a6ff;
+            --accent-yellow: #d29922;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+        }
+
+        .card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+
+        .input-range {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .input-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .input-range::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .input-range::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .number-input {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .number-input:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .positive { color: var(--accent-green); }
+        .negative { color: var(--accent-red); }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, #1f6feb 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
+        }
+
+        .glow-green {
+            box-shadow: 0 0 20px rgba(63, 185, 80, 0.2);
+        }
+
+        .glow-red {
+            box-shadow: 0 0 20px rgba(248, 81, 73, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold mb-2">
+                <span class="text-blue-400">FX</span> 収益シミュレーター
+            </h1>
+            <p class="text-gray-400">よすが式トレード手法 | Fintokei攻略用</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Left Panel - Input Parameters -->
+            <div class="lg:col-span-4">
+                <div class="card p-6">
+                    <h2 class="text-xl font-bold mb-6 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                        </svg>
+                        入力パラメータ
+                    </h2>
+
+                    <!-- 口座資金 -->
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">口座資金</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" v-model.number="params.accountBalance"
+                                   min="1000000" max="100000000" step="1000000"
+                                   class="input-range flex-1">
+                            <div class="w-32">
+                                <input type="text" :value="formatCurrency(params.accountBalance)"
+                                       @input="updateAccountBalance" class="number-input text-right text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- リスク許容率 -->
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">リスク許容率</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" v-model.number="params.riskRate"
+                                   min="0.1" max="3" step="0.1"
+                                   class="input-range flex-1">
+                            <div class="w-24">
+                                <input type="number" v-model.number="params.riskRate"
+                                       min="0.1" max="5" step="0.1"
+                                       class="number-input text-right text-sm">
+                            </div>
+                            <span class="text-gray-400 w-6">%</span>
+                        </div>
+                    </div>
+
+                    <!-- リスクリワード -->
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">リスクリワード (1:N)</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" v-model.number="params.riskReward"
+                                   min="0.5" max="5" step="0.1"
+                                   class="input-range flex-1">
+                            <div class="w-24">
+                                <input type="number" v-model.number="params.riskReward"
+                                       min="0.1" max="10" step="0.1"
+                                       class="number-input text-right text-sm">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">損失1に対して利益{{ params.riskReward.toFixed(1) }}</p>
+                    </div>
+
+                    <!-- 月間エントリー回数 -->
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">月間エントリー回数</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" v-model.number="params.monthlyTrades"
+                                   min="1" max="200" step="1"
+                                   class="input-range flex-1">
+                            <div class="w-24">
+                                <input type="number" v-model.number="params.monthlyTrades"
+                                       min="1" max="500" step="1"
+                                       class="number-input text-right text-sm">
+                            </div>
+                            <span class="text-gray-400 w-6">回</span>
+                        </div>
+                    </div>
+
+                    <!-- 純粋勝率 -->
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">純粋勝率（建値除く）</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" v-model.number="params.winRate"
+                                   min="30" max="90" step="0.5"
+                                   class="input-range flex-1">
+                            <div class="w-24">
+                                <input type="number" v-model.number="params.winRate"
+                                       min="0" max="100" step="0.5"
+                                       class="number-input text-right text-sm">
+                            </div>
+                            <span class="text-gray-400 w-6">%</span>
+                        </div>
+                    </div>
+
+                    <!-- 建値撤退率 -->
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">建値撤退率</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" v-model.number="params.breakEvenRate"
+                                   min="0" max="80" step="1"
+                                   class="input-range flex-1">
+                            <div class="w-24">
+                                <input type="number" v-model.number="params.breakEvenRate"
+                                       min="0" max="90" step="1"
+                                       class="number-input text-right text-sm">
+                            </div>
+                            <span class="text-gray-400 w-6">%</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">建値撤退が多いほどドローダウン軽減</p>
+                    </div>
+
+                    <!-- 利益配分率 -->
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">利益配分率（トレーダー取り分）</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" v-model.number="params.profitShare"
+                                   min="50" max="100" step="5"
+                                   class="input-range flex-1">
+                            <div class="w-24">
+                                <input type="number" v-model.number="params.profitShare"
+                                       min="0" max="100" step="5"
+                                       class="number-input text-right text-sm">
+                            </div>
+                            <span class="text-gray-400 w-6">%</span>
+                        </div>
+                    </div>
+
+                    <!-- Simulate Button -->
+                    <button @click="runSimulation" class="btn w-full mt-4">
+                        <span class="flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            ランダムシミュレーション
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Fintokei Simulation -->
+                <div class="card p-6 mt-6">
+                    <h3 class="text-lg font-bold mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                        </svg>
+                        Fintokei 合格シミュレーション
+                        <span class="ml-2 text-xs text-gray-500">({{ fintokeiMonte.iterations }}回試行)</span>
+                    </h3>
+
+                    <!-- 月間取引日数 -->
+                    <div class="mb-4">
+                        <label class="block text-sm text-gray-400 mb-2">月間取引日数</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" v-model.number="params.tradingDaysPerMonth"
+                                   min="5" max="25" step="1"
+                                   class="input-range flex-1">
+                            <div class="w-20">
+                                <input type="number" v-model.number="params.tradingDaysPerMonth"
+                                       min="1" max="30" step="1"
+                                       class="number-input text-right text-sm">
+                            </div>
+                            <span class="text-gray-400 w-6">日</span>
+                        </div>
+                    </div>
+
+                    <!-- 総合成功率 -->
+                    <div class="mb-4 p-4 rounded-lg" :style="{
+                        background: fintokeiMonte.totalSuccessRate >= 70 ? 'rgba(34, 197, 94, 0.15)' :
+                                   fintokeiMonte.totalSuccessRate >= 40 ? 'rgba(250, 204, 21, 0.15)' : 'rgba(248, 81, 73, 0.15)',
+                        border: fintokeiMonte.totalSuccessRate >= 70 ? '1px solid rgba(34, 197, 94, 0.4)' :
+                               fintokeiMonte.totalSuccessRate >= 40 ? '1px solid rgba(250, 204, 21, 0.4)' : '1px solid rgba(248, 81, 73, 0.4)'
+                    }">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium" :class="{
+                                'text-green-400': fintokeiMonte.totalSuccessRate >= 70,
+                                'text-yellow-400': fintokeiMonte.totalSuccessRate >= 40 && fintokeiMonte.totalSuccessRate < 70,
+                                'text-red-400': fintokeiMonte.totalSuccessRate < 40
+                            }">🎯 総合合格率</span>
+                            <span class="text-2xl font-bold" :class="{
+                                'text-green-400': fintokeiMonte.totalSuccessRate >= 70,
+                                'text-yellow-400': fintokeiMonte.totalSuccessRate >= 40 && fintokeiMonte.totalSuccessRate < 70,
+                                'text-red-400': fintokeiMonte.totalSuccessRate < 40
+                            }">{{ fintokeiMonte.totalSuccessRate.toFixed(1) }}%</span>
+                        </div>
+                        <div class="mt-2 h-2 bg-gray-700 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-300"
+                                 :style="{ width: fintokeiMonte.totalSuccessRate + '%' }"
+                                 :class="{
+                                     'bg-green-500': fintokeiMonte.totalSuccessRate >= 70,
+                                     'bg-yellow-500': fintokeiMonte.totalSuccessRate >= 40 && fintokeiMonte.totalSuccessRate < 70,
+                                     'bg-red-500': fintokeiMonte.totalSuccessRate < 40
+                                 }"></div>
+                        </div>
+                    </div>
+
+                    <!-- Phase Results -->
+                    <div class="space-y-3">
+                        <!-- フェーズ1 -->
+                        <div class="p-3 rounded-lg" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3);">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-blue-400 text-sm font-medium">フェーズ1 (+8%目標)</span>
+                                <span class="text-blue-300 text-sm">成功率: {{ fintokeiMonte.phase1SuccessRate.toFixed(1) }}%</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                                <div class="p-2 rounded" style="background: rgba(34, 197, 94, 0.2);">
+                                    <p class="text-gray-400">楽観的</p>
+                                    <p class="text-green-400 font-bold">{{ fintokeiMonte.phase1Optimistic }}日</p>
+                                </div>
+                                <div class="p-2 rounded" style="background: rgba(59, 130, 246, 0.2);">
+                                    <p class="text-gray-400">平均的</p>
+                                    <p class="text-blue-400 font-bold">{{ fintokeiMonte.phase1Median }}日</p>
+                                </div>
+                                <div class="p-2 rounded" style="background: rgba(248, 81, 73, 0.2);">
+                                    <p class="text-gray-400">悲観的</p>
+                                    <p class="text-red-400 font-bold">{{ fintokeiMonte.phase1Pessimistic }}日</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- フェーズ2 -->
+                        <div class="p-3 rounded-lg" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3);">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-purple-400 text-sm font-medium">フェーズ2 (+6%目標)</span>
+                                <span class="text-purple-300 text-sm">成功率: {{ fintokeiMonte.phase2SuccessRate.toFixed(1) }}%</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                                <div class="p-2 rounded" style="background: rgba(34, 197, 94, 0.2);">
+                                    <p class="text-gray-400">楽観的</p>
+                                    <p class="text-green-400 font-bold">{{ fintokeiMonte.phase2Optimistic }}日</p>
+                                </div>
+                                <div class="p-2 rounded" style="background: rgba(139, 92, 246, 0.2);">
+                                    <p class="text-gray-400">平均的</p>
+                                    <p class="text-purple-400 font-bold">{{ fintokeiMonte.phase2Median }}日</p>
+                                </div>
+                                <div class="p-2 rounded" style="background: rgba(248, 81, 73, 0.2);">
+                                    <p class="text-gray-400">悲観的</p>
+                                    <p class="text-red-400 font-bold">{{ fintokeiMonte.phase2Pessimistic }}日</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 合計・出金まで -->
+                        <div class="p-3 rounded-lg" style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3);">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-green-400 text-sm font-medium">合格までの合計（成功時）</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                                <div class="p-2 rounded" style="background: rgba(34, 197, 94, 0.2);">
+                                    <p class="text-gray-400">楽観的</p>
+                                    <p class="text-green-400 font-bold">{{ fintokeiMonte.totalOptimistic }}日</p>
+                                    <p class="text-gray-500">({{ (fintokeiMonte.totalOptimistic / 30).toFixed(1) }}ヶ月)</p>
+                                </div>
+                                <div class="p-2 rounded" style="background: rgba(59, 130, 246, 0.2);">
+                                    <p class="text-gray-400">平均的</p>
+                                    <p class="text-blue-400 font-bold">{{ fintokeiMonte.totalMedian }}日</p>
+                                    <p class="text-gray-500">({{ (fintokeiMonte.totalMedian / 30).toFixed(1) }}ヶ月)</p>
+                                </div>
+                                <div class="p-2 rounded" style="background: rgba(248, 81, 73, 0.2);">
+                                    <p class="text-gray-400">悲観的</p>
+                                    <p class="text-red-400 font-bold">{{ fintokeiMonte.totalPessimistic }}日</p>
+                                    <p class="text-gray-500">({{ (fintokeiMonte.totalPessimistic / 30).toFixed(1) }}ヶ月)</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 出金可能日 -->
+                        <div class="p-3 rounded-lg" style="background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.3);">
+                            <div class="flex justify-between items-center">
+                                <span class="text-yellow-400 text-sm font-medium">初回出金可能まで（平均）</span>
+                                <span class="text-white font-bold">{{ fintokeiMonte.totalMedian + 14 }}日 (約{{ ((fintokeiMonte.totalMedian + 14) / 30).toFixed(1) }}ヶ月)</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">プロ認定後14日後に出金申請可能</p>
+                        </div>
+                    </div>
+
+                    <!-- 失格リスク分析 -->
+                    <div class="mt-4 p-3 rounded-lg" style="background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.3);">
+                        <p class="text-red-400 text-sm font-medium mb-2">⚠️ 失格リスク分析</p>
+                        <div class="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <p class="text-gray-400">1日最大損失リスク</p>
+                                <p class="text-white font-medium">{{ fintokeiMonte.dailyMaxLossPercent.toFixed(2) }}% / 5%</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-400">失格確率（総合）</p>
+                                <p class="font-medium" :class="fintokeiMonte.totalSuccessRate >= 70 ? 'text-green-400' : fintokeiMonte.totalSuccessRate >= 40 ? 'text-yellow-400' : 'text-red-400'">
+                                    {{ (100 - fintokeiMonte.totalSuccessRate).toFixed(1) }}%
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trade Breakdown -->
+                <div class="card p-6 mt-6">
+                    <h3 class="text-lg font-bold mb-4 text-gray-300">トレード内訳</h3>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">総エントリー数</span>
+                            <span>{{ params.monthlyTrades }}回</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">建値撤退</span>
+                            <span class="text-yellow-400">{{ calculated.breakEvenTrades }}回</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">有効トレード</span>
+                            <span>{{ calculated.effectiveTrades }}回</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">勝ちトレード</span>
+                            <span class="text-green-400">{{ calculated.winTrades }}回</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">負けトレード</span>
+                            <span class="text-red-400">{{ calculated.loseTrades }}回</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Results -->
+            <div class="lg:col-span-8">
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="stat-card" :class="calculated.monthlyProfit >= 0 ? 'glow-green' : 'glow-red'">
+                        <p class="text-xs text-gray-400 mb-1">月間推定利益</p>
+                        <p class="text-xl font-bold" :class="calculated.monthlyProfit >= 0 ? 'positive' : 'negative'">
+                            {{ formatCurrency(calculated.monthlyProfit) }}
+                        </p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">月利</p>
+                        <p class="text-xl font-bold" :class="calculated.monthlyReturn >= 0 ? 'positive' : 'negative'">
+                            {{ calculated.monthlyReturn.toFixed(2) }}%
+                        </p>
+                    </div>
+                    <div class="stat-card glow-green">
+                        <p class="text-xs text-gray-400 mb-1">トレーダー手取り</p>
+                        <p class="text-xl font-bold text-green-400">
+                            {{ formatCurrency(calculated.traderIncome) }}
+                        </p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">損益分岐勝率</p>
+                        <p class="text-xl font-bold" :class="params.winRate >= calculated.breakEvenWinRate ? 'positive' : 'negative'">
+                            {{ calculated.breakEvenWinRate.toFixed(1) }}%
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Additional Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">1トレードあたりリスク額</p>
+                        <p class="text-lg font-bold text-blue-400">
+                            {{ formatCurrency(calculated.riskPerTrade) }}
+                        </p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">期待値 / トレード</p>
+                        <p class="text-lg font-bold" :class="calculated.expectedValue >= 0 ? 'positive' : 'negative'">
+                            {{ formatCurrency(calculated.expectedValue) }}
+                        </p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">最大ドローダウン</p>
+                        <p class="text-lg font-bold text-red-400">
+                            {{ simulation.maxDrawdownPercent.toFixed(2) }}%
+                        </p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">プロフィットファクター</p>
+                        <p class="text-lg font-bold" :class="calculated.profitFactor >= 1 ? 'positive' : 'negative'">
+                            {{ calculated.profitFactor.toFixed(2) }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="card p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold">資産推移シミュレーション</h3>
+                        <div class="text-sm text-gray-400">
+                            最終資産: <span class="font-bold" :class="simulation.finalBalance >= params.accountBalance ? 'positive' : 'negative'">
+                                {{ formatCurrency(simulation.finalBalance) }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="relative" style="height: 400px;">
+                        <canvas ref="chartCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Risk Analysis -->
+                <div class="card p-6 mt-6">
+                    <h3 class="text-lg font-bold mb-4">リスク分析</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-400 mb-3">勝率マージン</h4>
+                            <div class="relative h-4 bg-gray-700 rounded-full overflow-hidden">
+                                <div class="absolute h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500"
+                                     style="width: 100%"></div>
+                                <div class="absolute h-full w-1 bg-white"
+                                     :style="{ left: calculated.breakEvenWinRate + '%' }"></div>
+                                <div class="absolute h-full w-2 bg-blue-400 rounded-full"
+                                     :style="{ left: params.winRate + '%', transform: 'translateX(-50%)' }"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>0%</span>
+                                <span>損益分岐: {{ calculated.breakEvenWinRate.toFixed(1) }}%</span>
+                                <span>100%</span>
+                            </div>
+                            <p class="text-sm mt-2" :class="params.winRate >= calculated.breakEvenWinRate ? 'text-green-400' : 'text-red-400'">
+                                現在の勝率は損益分岐点を{{ params.winRate >= calculated.breakEvenWinRate ? '上回っています' : '下回っています' }}
+                                （差: {{ (params.winRate - calculated.breakEvenWinRate).toFixed(1) }}%）
+                            </p>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-400 mb-3">建値撤退の効果</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">リスク軽減効果</span>
+                                    <span class="text-yellow-400">
+                                        {{ (params.breakEvenRate).toFixed(0) }}%のトレードでリスク0
+                                    </span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">有効RR実質値</span>
+                                    <span class="text-blue-400">
+                                        1:{{ ((params.riskReward * params.winRate/100) / ((1 - params.breakEvenRate/100) * (1 - params.winRate/100))).toFixed(2) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center text-gray-500 text-sm mt-8 pb-4">
+            <p>FX Trading Simulator - よすが式 | For educational purposes only</p>
+        </footer>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, watch, onMounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const chartCanvas = ref(null);
+                let chart = null;
+
+                const params = reactive({
+                    accountBalance: 20000000,
+                    riskRate: 0.8,
+                    riskReward: 1.1,
+                    monthlyTrades: 50,
+                    winRate: 62.5,
+                    breakEvenRate: 40,
+                    profitShare: 80,
+                    tradingDaysPerMonth: 20
+                });
+
+                const simulation = reactive({
+                    data: [],
+                    finalBalance: 0,
+                    maxDrawdown: 0,
+                    maxDrawdownPercent: 0
+                });
+
+                const calculated = computed(() => {
+                    const riskPerTrade = params.accountBalance * (params.riskRate / 100);
+                    const winAmount = riskPerTrade * params.riskReward;
+
+                    const breakEvenTrades = Math.round(params.monthlyTrades * (params.breakEvenRate / 100));
+                    const effectiveTrades = params.monthlyTrades - breakEvenTrades;
+                    const winTrades = Math.round(effectiveTrades * (params.winRate / 100));
+                    const loseTrades = effectiveTrades - winTrades;
+
+                    const totalWin = winTrades * winAmount;
+                    const totalLoss = loseTrades * riskPerTrade;
+                    const monthlyProfit = totalWin - totalLoss;
+                    const monthlyReturn = (monthlyProfit / params.accountBalance) * 100;
+                    const traderIncome = monthlyProfit > 0 ? monthlyProfit * (params.profitShare / 100) : monthlyProfit;
+
+                    // 損益分岐勝率 = 1 / (1 + RR)
+                    const breakEvenWinRate = (1 / (1 + params.riskReward)) * 100;
+
+                    // 有効トレードあたりの期待値
+                    const winProb = params.winRate / 100;
+                    const expectedValue = (winProb * winAmount) - ((1 - winProb) * riskPerTrade);
+
+                    // プロフィットファクター
+                    const profitFactor = totalLoss > 0 ? totalWin / totalLoss : totalWin > 0 ? Infinity : 0;
+
+                    return {
+                        riskPerTrade: Math.round(riskPerTrade),
+                        breakEvenTrades,
+                        effectiveTrades,
+                        winTrades,
+                        loseTrades,
+                        monthlyProfit: Math.round(monthlyProfit),
+                        monthlyReturn,
+                        traderIncome: Math.round(traderIncome),
+                        breakEvenWinRate,
+                        expectedValue: Math.round(expectedValue),
+                        profitFactor: isFinite(profitFactor) ? profitFactor : 999
+                    };
+                });
+
+                // Fintokei モンテカルロシミュレーション
+                const runFintokeiPhase = (targetPercent, iterations = 500) => {
+                    const tradesPerDay = params.monthlyTrades / params.tradingDaysPerMonth;
+                    const riskPerTrade = params.riskRate; // %
+                    const rewardPerTrade = riskPerTrade * params.riskReward;
+                    const breakEvenProb = params.breakEvenRate / 100;
+                    const winProb = params.winRate / 100;
+
+                    const results = [];
+                    let successCount = 0;
+
+                    for (let iter = 0; iter < iterations; iter++) {
+                        let balance = 0; // 初期からの変動%
+                        let dayCount = 0;
+                        let failed = false;
+                        let succeeded = false;
+                        const maxDays = 365; // 最大1年
+
+                        while (!failed && !succeeded && dayCount < maxDays) {
+                            dayCount++;
+                            let dailyPnL = 0;
+                            const dailyStartBalance = balance;
+
+                            // 1日のトレードをシミュレート
+                            for (let t = 0; t < tradesPerDay; t++) {
+                                const rand = Math.random();
+
+                                if (rand < breakEvenProb) {
+                                    // 建値撤退
+                                    continue;
+                                } else {
+                                    const adjustedRand = (rand - breakEvenProb) / (1 - breakEvenProb);
+                                    if (adjustedRand < winProb) {
+                                        dailyPnL += rewardPerTrade;
+                                    } else {
+                                        dailyPnL -= riskPerTrade;
+                                    }
+                                }
+
+                                // 日中の累計損失チェック（-5%ルール）
+                                if (dailyPnL <= -5) {
+                                    failed = true;
+                                    break;
+                                }
+                            }
+
+                            balance += dailyPnL;
+
+                            // 失格判定
+                            if (balance <= -10) {
+                                failed = true;
+                            }
+
+                            // 合格判定
+                            if (balance >= targetPercent && dayCount >= 3) {
+                                succeeded = true;
+                            }
+                        }
+
+                        if (succeeded) {
+                            successCount++;
+                            results.push(dayCount);
+                        }
+                    }
+
+                    // 統計計算
+                    results.sort((a, b) => a - b);
+                    const successRate = (successCount / iterations) * 100;
+
+                    if (results.length === 0) {
+                        return {
+                            successRate: 0,
+                            optimistic: 999,
+                            median: 999,
+                            pessimistic: 999
+                        };
+                    }
+
+                    const optimistic = results[Math.floor(results.length * 0.25)] || results[0];
+                    const median = results[Math.floor(results.length * 0.5)] || results[0];
+                    const pessimistic = results[Math.floor(results.length * 0.75)] || results[results.length - 1];
+
+                    return {
+                        successRate,
+                        optimistic,
+                        median,
+                        pessimistic
+                    };
+                };
+
+                const fintokeiMonte = computed(() => {
+                    const iterations = 500;
+                    const tradesPerDay = params.monthlyTrades / params.tradingDaysPerMonth;
+                    const maxLossPerDay = tradesPerDay * params.riskRate;
+
+                    // フェーズ1: +8%目標
+                    const phase1 = runFintokeiPhase(8, iterations);
+
+                    // フェーズ2: +6%目標
+                    const phase2 = runFintokeiPhase(6, iterations);
+
+                    // 総合成功率（フェーズ1成功 × フェーズ2成功）
+                    const totalSuccessRate = (phase1.successRate / 100) * (phase2.successRate / 100) * 100;
+
+                    return {
+                        iterations,
+                        phase1SuccessRate: phase1.successRate,
+                        phase1Optimistic: phase1.optimistic,
+                        phase1Median: phase1.median,
+                        phase1Pessimistic: phase1.pessimistic,
+                        phase2SuccessRate: phase2.successRate,
+                        phase2Optimistic: phase2.optimistic,
+                        phase2Median: phase2.median,
+                        phase2Pessimistic: phase2.pessimistic,
+                        totalSuccessRate,
+                        totalOptimistic: phase1.optimistic + phase2.optimistic,
+                        totalMedian: phase1.median + phase2.median,
+                        totalPessimistic: phase1.pessimistic + phase2.pessimistic,
+                        dailyMaxLossPercent: maxLossPerDay
+                    };
+                });
+
+                const formatCurrency = (value) => {
+                    if (Math.abs(value) >= 100000000) {
+                        return (value / 100000000).toFixed(2) + '億円';
+                    } else if (Math.abs(value) >= 10000) {
+                        return (value / 10000).toFixed(1) + '万円';
+                    }
+                    return value.toLocaleString('ja-JP') + '円';
+                };
+
+                const updateAccountBalance = (e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    if (value) {
+                        params.accountBalance = parseInt(value);
+                    }
+                };
+
+                const runSimulation = () => {
+                    const riskPerTrade = params.accountBalance * (params.riskRate / 100);
+                    const winAmount = riskPerTrade * params.riskReward;
+
+                    let balance = params.accountBalance;
+                    let peak = balance;
+                    let maxDrawdown = 0;
+                    let maxDrawdownPercent = 0;
+                    const data = [balance];
+
+                    for (let i = 0; i < params.monthlyTrades; i++) {
+                        const rand = Math.random() * 100;
+
+                        if (rand < params.breakEvenRate) {
+                            // 建値撤退 - 損益なし
+                        } else {
+                            const adjustedRand = (rand - params.breakEvenRate) / (100 - params.breakEvenRate) * 100;
+                            if (adjustedRand < params.winRate) {
+                                balance += winAmount;
+                            } else {
+                                balance -= riskPerTrade;
+                            }
+                        }
+
+                        data.push(Math.round(balance));
+
+                        if (balance > peak) {
+                            peak = balance;
+                        }
+                        const drawdown = peak - balance;
+                        const drawdownPercent = (drawdown / peak) * 100;
+                        if (drawdown > maxDrawdown) {
+                            maxDrawdown = drawdown;
+                            maxDrawdownPercent = drawdownPercent;
+                        }
+                    }
+
+                    simulation.data = data;
+                    simulation.finalBalance = Math.round(balance);
+                    simulation.maxDrawdown = maxDrawdown;
+                    simulation.maxDrawdownPercent = maxDrawdownPercent;
+
+                    updateChart();
+                };
+
+                const updateChart = () => {
+                    if (!chart || !chartCanvas.value) return;
+
+                    const labels = simulation.data.map((_, i) => i === 0 ? '開始' : `${i}回目`);
+                    const startBalance = params.accountBalance;
+
+                    // グラデーションの作成
+                    const ctx = chartCanvas.value.getContext('2d');
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                    if (simulation.finalBalance >= startBalance) {
+                        gradient.addColorStop(0, 'rgba(63, 185, 80, 0.3)');
+                        gradient.addColorStop(1, 'rgba(63, 185, 80, 0)');
+                    } else {
+                        gradient.addColorStop(0, 'rgba(248, 81, 73, 0.3)');
+                        gradient.addColorStop(1, 'rgba(248, 81, 73, 0)');
+                    }
+
+                    chart.data.labels = labels;
+                    chart.data.datasets[0].data = simulation.data;
+                    chart.data.datasets[0].backgroundColor = gradient;
+                    chart.data.datasets[0].borderColor = simulation.finalBalance >= startBalance ? '#3fb950' : '#f85149';
+                    chart.data.datasets[1].data = new Array(simulation.data.length).fill(startBalance);
+                    chart.update('none');
+                };
+
+                const initChart = () => {
+                    if (!chartCanvas.value) return;
+
+                    const ctx = chartCanvas.value.getContext('2d');
+
+                    chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [
+                                {
+                                    label: '資産推移',
+                                    data: [],
+                                    borderColor: '#3fb950',
+                                    backgroundColor: 'rgba(63, 185, 80, 0.1)',
+                                    borderWidth: 2,
+                                    fill: true,
+                                    tension: 0.1,
+                                    pointRadius: 0,
+                                    pointHoverRadius: 6,
+                                    pointHoverBackgroundColor: '#3fb950'
+                                },
+                                {
+                                    label: '初期資金',
+                                    data: [],
+                                    borderColor: '#8b949e',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5],
+                                    fill: false,
+                                    pointRadius: 0,
+                                    pointHoverRadius: 0
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+                                    labels: {
+                                        color: '#8b949e',
+                                        usePointStyle: true,
+                                        padding: 20
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: '#21262d',
+                                    titleColor: '#e6edf3',
+                                    bodyColor: '#e6edf3',
+                                    borderColor: '#30363d',
+                                    borderWidth: 1,
+                                    padding: 12,
+                                    displayColors: false,
+                                    callbacks: {
+                                        label: function(context) {
+                                            if (context.datasetIndex === 0) {
+                                                const value = context.raw;
+                                                const diff = value - params.accountBalance;
+                                                const diffPercent = (diff / params.accountBalance * 100).toFixed(2);
+                                                const sign = diff >= 0 ? '+' : '';
+                                                return [
+                                                    `資産: ¥${value.toLocaleString()}`,
+                                                    `損益: ${sign}¥${diff.toLocaleString()} (${sign}${diffPercent}%)`
+                                                ];
+                                            }
+                                            return null;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: {
+                                        color: 'rgba(48, 54, 61, 0.5)',
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        color: '#8b949e',
+                                        maxTicksLimit: 10
+                                    }
+                                },
+                                y: {
+                                    grid: {
+                                        color: 'rgba(48, 54, 61, 0.5)',
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        color: '#8b949e',
+                                        callback: function(value) {
+                                            if (value >= 100000000) {
+                                                return (value / 100000000).toFixed(1) + '億';
+                                            } else if (value >= 10000) {
+                                                return (value / 10000).toFixed(0) + '万';
+                                            }
+                                            return value;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    runSimulation();
+                };
+
+                // パラメータ変更時の自動再計算
+                watch(
+                    () => [
+                        params.accountBalance,
+                        params.riskRate,
+                        params.riskReward,
+                        params.monthlyTrades,
+                        params.winRate,
+                        params.breakEvenRate,
+                        params.profitShare,
+                        params.tradingDaysPerMonth
+                    ],
+                    () => {
+                        runSimulation();
+                    },
+                    { deep: true }
+                );
+
+                onMounted(() => {
+                    nextTick(() => {
+                        initChart();
+                    });
+                });
+
+                return {
+                    chartCanvas,
+                    params,
+                    calculated,
+                    simulation,
+                    fintokeiMonte,
+                    formatCurrency,
+                    updateAccountBalance,
+                    runSimulation
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
