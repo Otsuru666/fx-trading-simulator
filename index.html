@@ -253,20 +253,6 @@
                         <p class="text-xs text-gray-500 mt-1">損失1に対して利益{{ params.riskReward.toFixed(1) }}</p>
                     </div>
 
-                    <!-- 通貨ペア選択 -->
-                    <div class="mb-6">
-                        <label class="block text-sm text-gray-400 mb-2">取引通貨ペア</label>
-                        <select v-model="params.currencyPair" class="number-input text-sm w-full">
-                            <option value="GOLD">GOLD (XAU/USD) - スプレッド 2.5pips</option>
-                            <option value="USD/JPY">USD/JPY - スプレッド 0.3pips</option>
-                            <option value="EUR/USD">EUR/USD - スプレッド 0.2pips</option>
-                            <option value="GBP/USD">GBP/USD - スプレッド 0.4pips</option>
-                        </select>
-                        <p class="text-xs text-gray-500 mt-1">
-                            スプレッド・手数料・スリッページがシミュレーションに反映されます
-                        </p>
-                    </div>
-
                     <!-- 月間エントリー回数 -->
                     <div class="mb-6">
                         <label class="block text-sm text-gray-400 mb-2">月間エントリー回数</label>
@@ -501,7 +487,7 @@
                         <p class="text-blue-400 text-xs font-medium mb-1">📊 シミュレーション精度</p>
                         <p class="text-xs text-gray-400 leading-relaxed">
                             このシミュレーションには以下の現実的要素が含まれています：<br>
-                            • スプレッド（通貨ペア別）<br>
+                            • スプレッド（平均0.4 pips）<br>
                             • 手数料（往復6ドル ≈ 0.006%）<br>
                             • スリッページ（0.01-0.02%のランダム）<br>
                             • 連敗時の心理的影響（リスク微増モデル）
@@ -868,19 +854,13 @@
                     winRate: 62.5,
                     breakEvenRate: 40,
                     profitShare: 80,
-                    tradingDaysPerMonth: 20,
-                    currencyPair: 'GOLD'
+                    tradingDaysPerMonth: 20
                 });
 
-                // 通貨ペア別のスプレッドコスト（%）
-                const spreadCosts = {
-                    'GOLD': 0.025,      // 2.5 pips
-                    'USD/JPY': 0.003,   // 0.3 pips
-                    'EUR/USD': 0.002,   // 0.2 pips
-                    'GBP/USD': 0.004    // 0.4 pips
-                };
+                // スプレッドコスト（固定: 平均0.4 pips相当）
+                const spreadCost = 0.004;
 
-                // 手数料コスト (往復6ドル ≒ 0.006%)
+                // 手数料コスト（往復6ドル ≈ 0.006%）
                 const commissionCost = 0.006;
 
                 const simulation = reactive({
@@ -938,8 +918,7 @@
                     const breakEvenProb = params.breakEvenRate / 100;
                     const winProb = params.winRate / 100;
 
-                    // コスト計算
-                    const spreadCost = spreadCosts[params.currencyPair] || 0.002;
+                    // コスト計算（スリッページ）
                     const slippageCost = () => 0.01 + Math.random() * 0.01; // 0.01-0.02%のランダム
 
                     const results = [];
@@ -1255,9 +1234,7 @@
                     const riskPerTrade = params.accountBalance * (params.riskRate / 100);
                     const winAmount = riskPerTrade * params.riskReward;
 
-                    // コスト計算
-                    const spreadCost = spreadCosts[params.currencyPair] || 0.002;
-                    const slippageCost = () => 0.01 + Math.random() * 0.01; // 0.01-0.02%
+                    // コスト計算（平均スリッページ含む）
                     const totalCostPercent = spreadCost + commissionCost + 0.015; // 平均スリッページ
 
                     let balance = params.accountBalance;
