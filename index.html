@@ -115,19 +115,84 @@
         .glow-red {
             box-shadow: 0 0 20px rgba(248, 81, 73, 0.2);
         }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border-radius: 8px 8px 0 0;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            border-bottom: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+
+        .tab-btn.active {
+            background: var(--bg-secondary);
+            color: var(--accent-blue);
+            border-color: var(--border-color);
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: var(--accent-blue);
+            background: rgba(88, 166, 255, 0.05);
+        }
+
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: var(--bg-tertiary);
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
     </style>
 </head>
 <body class="min-h-screen">
     <div id="app" class="container mx-auto px-4 py-8">
         <!-- Header -->
-        <header class="text-center mb-8">
+        <header class="text-center mb-6">
             <h1 class="text-3xl md:text-4xl font-bold mb-2">
                 <span class="text-blue-400">FX</span> 収益シミュレーター
             </h1>
             <p class="text-gray-400">Fintokei攻略用</p>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Tab Navigation -->
+        <div class="flex justify-center mb-6">
+            <div class="flex" style="border-bottom: 1px solid var(--border-color);">
+                <button @click="activeTab = 'simulator'"
+                        :class="['tab-btn', activeTab === 'simulator' ? 'active' : '']">
+                    📊 シミュレーション
+                </button>
+                <button @click="activeTab = 'results'"
+                        :class="['tab-btn', activeTab === 'results' ? 'active' : '']">
+                    📈 トレード実績
+                </button>
+            </div>
+        </div>
+
+        <!-- Simulator Tab -->
+        <div v-show="activeTab === 'simulator'" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Left Panel - Input Parameters -->
             <div class="lg:col-span-4">
                 <div class="card p-6">
@@ -561,6 +626,187 @@
             </div>
         </div>
 
+        <!-- Results Tab -->
+        <div v-show="activeTab === 'results'" class="space-y-6">
+            <!-- CSV Upload Section -->
+            <div class="card p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    トレード実績CSV読み込み
+                </h2>
+                <div class="drop-zone" 
+                     @click="fileInput.click()"
+                     @dragover.prevent="isDragOver = true"
+                     @dragleave.prevent="isDragOver = false"
+                     @drop.prevent="handleFileDrop"
+                     :class="{ 'drag-over': isDragOver }">
+                    <input type="file" ref="fileInput" @change="handleFileSelect" accept=".csv" class="hidden">
+                    <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <p class="text-gray-400 mb-2">CSVファイルをドラッグ&ドロップ</p>
+                    <p class="text-sm text-gray-500">またはクリックしてファイルを選択</p>
+                    <p v-if="tradeData.length > 0" class="text-green-400 mt-4 text-sm">
+                        ✓ {{ tradeData.length }}件のトレードを読み込みました
+                    </p>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div v-if="tradeData.length > 0">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="stat-card glow-green">
+                        <p class="text-xs text-gray-400 mb-1">総トレード数</p>
+                        <p class="text-2xl font-bold text-white">{{ tradeStats.totalTrades }}</p>
+                    </div>
+                    <div class="stat-card" :class="tradeStats.winRate >= 50 ? 'glow-green' : 'glow-red'">
+                        <p class="text-xs text-gray-400 mb-1">勝率（建値除く）</p>
+                        <p class="text-2xl font-bold" :class="tradeStats.winRate >= 50 ? 'positive' : 'negative'">
+                            {{ tradeStats.winRate.toFixed(1) }}%
+                        </p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">利確</p>
+                        <p class="text-2xl font-bold text-green-400">{{ tradeStats.winTrades }}</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">損切り</p>
+                        <p class="text-2xl font-bold text-red-400">{{ tradeStats.lossTrades }}</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">建値撤退</p>
+                        <p class="text-2xl font-bold text-yellow-400">{{ tradeStats.breakEvenTrades }}</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">有効トレード</p>
+                        <p class="text-2xl font-bold text-white">{{ tradeStats.effectiveTrades }}</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">プロフィットファクター</p>
+                        <p class="text-2xl font-bold" :class="tradeStats.profitFactor >= 1 ? 'positive' : 'negative'">
+                            {{ tradeStats.profitFactor.toFixed(2) }}
+                        </p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">正しいトレード率</p>
+                        <p class="text-2xl font-bold text-blue-400">{{ tradeStats.correctTradeRate.toFixed(1) }}%</p>
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="card p-6 mb-6">
+                    <h3 class="text-lg font-bold mb-4">トレード推移</h3>
+                    <div class="relative" style="height: 400px;">
+                        <canvas ref="resultsChartCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Currency Pair Stats -->
+                <div class="card p-6 mb-6">
+                    <h3 class="text-lg font-bold mb-4">通貨ペア別成績</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b" style="border-color: var(--border-color);">
+                                    <th class="text-left py-3 px-4 text-gray-400">通貨ペア</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">総数</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">利確</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">損切り</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">建値</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">勝率</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(stats, pair) in currencyPairStats" :key="pair" 
+                                    class="border-b hover:bg-gray-800" style="border-color: var(--border-color);">
+                                    <td class="py-3 px-4 font-medium">{{ pair }}</td>
+                                    <td class="text-right py-3 px-4">{{ stats.total }}</td>
+                                    <td class="text-right py-3 px-4 text-green-400">{{ stats.win }}</td>
+                                    <td class="text-right py-3 px-4 text-red-400">{{ stats.loss }}</td>
+                                    <td class="text-right py-3 px-4 text-yellow-400">{{ stats.breakEven }}</td>
+                                    <td class="text-right py-3 px-4" :class="stats.winRate >= 50 ? 'text-green-400' : 'text-red-400'">
+                                        {{ stats.winRate.toFixed(1) }}%
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Trade List -->
+                <div class="card p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold">トレード一覧</h3>
+                        <div class="flex gap-2">
+                            <select v-model="filterCurrency" class="number-input text-sm w-32">
+                                <option value="">全通貨</option>
+                                <option v-for="pair in uniqueCurrencies" :key="pair" :value="pair">{{ pair }}</option>
+                            </select>
+                            <select v-model="filterResult" class="number-input text-sm w-32">
+                                <option value="">全結果</option>
+                                <option value="利確">利確</option>
+                                <option value="損切り">損切り</option>
+                                <option value="建値撤退">建値撤退</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b" style="border-color: var(--border-color);">
+                                    <th class="text-left py-3 px-4 text-gray-400">日付</th>
+                                    <th class="text-left py-3 px-4 text-gray-400">通貨ペア</th>
+                                    <th class="text-left py-3 px-4 text-gray-400">シナリオ</th>
+                                    <th class="text-left py-3 px-4 text-gray-400">エントリー</th>
+                                    <th class="text-center py-3 px-4 text-gray-400">結果</th>
+                                    <th class="text-left py-3 px-4 text-gray-400">評価</th>
+                                    <th class="text-left py-3 px-4 text-gray-400">メモ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(trade, index) in filteredTrades" :key="index"
+                                    class="border-b hover:bg-gray-800" style="border-color: var(--border-color);">
+                                    <td class="py-3 px-4">{{ formatDate(trade.date) }}</td>
+                                    <td class="py-3 px-4 font-medium">{{ trade.currency }}</td>
+                                    <td class="py-3 px-4 text-xs text-gray-400">{{ trade.scenario }}</td>
+                                    <td class="py-3 px-4 text-xs text-gray-400">{{ trade.entryScale }}</td>
+                                    <td class="text-center py-3 px-4">
+                                        <span :class="{
+                                            'text-green-400': trade.result === '利確',
+                                            'text-red-400': trade.result === '損切り',
+                                            'text-yellow-400': trade.result === '建値撤退'
+                                        }" class="font-medium">
+                                            {{ trade.result }}
+                                        </span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <span v-if="trade.correct === '⭕️'" class="text-green-400">⭕️</span>
+                                        <span v-else-if="trade.correct === '❌️'" class="text-red-400">❌️</span>
+                                        <span v-else class="text-gray-500">-</span>
+                                    </td>
+                                    <td class="py-3 px-4 text-xs text-gray-500 max-w-xs truncate">{{ trade.memo || '-' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else class="card p-12 text-center">
+                <svg class="w-16 h-16 mx-auto mb-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <p class="text-gray-400 text-lg mb-2">トレード実績がありません</p>
+                <p class="text-gray-500 text-sm">CSVファイルをアップロードしてトレード実績を表示してください</p>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="text-center text-gray-500 text-sm mt-8 pb-4">
             <p>FX Trading Simulator | For educational purposes only</p>
@@ -573,7 +819,16 @@
         createApp({
             setup() {
                 const chartCanvas = ref(null);
+                const resultsChartCanvas = ref(null);
+                const fileInput = ref(null);
                 let chart = null;
+                let resultsChart = null;
+
+                const activeTab = ref('simulator');
+                const isDragOver = ref(false);
+                const tradeData = ref([]);
+                const filterCurrency = ref('');
+                const filterResult = ref('');
 
                 const params = reactive({
                     accountBalance: 20000000,
@@ -754,6 +1009,172 @@
                         dailyMaxLossPercent: maxLossPerDay
                     };
                 });
+
+                // CSV Parsing
+                const parseCSV = (text) => {
+                    const lines = text.split('\n').filter(line => line.trim());
+                    if (lines.length < 2) return [];
+
+                    const headers = lines[0].split(',').map(h => h.trim());
+                    const trades = [];
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const values = [];
+                        let current = '';
+                        let inQuotes = false;
+
+                        for (let j = 0; j < lines[i].length; j++) {
+                            const char = lines[i][j];
+                            if (char === '"') {
+                                inQuotes = !inQuotes;
+                            } else if (char === ',' && !inQuotes) {
+                                values.push(current.trim());
+                                current = '';
+                            } else {
+                                current += char;
+                            }
+                        }
+                        values.push(current.trim());
+
+                        if (values.length >= headers.length) {
+                            const trade = {
+                                date: values[0] || '',
+                                entryTime: values[1] || '',
+                                exitTime: values[2] || '',
+                                currency: values[3] || '',
+                                scenario: values[4] || '',
+                                entryScale: values[5] || '',
+                                result: values[6] || '',
+                                scenarioDetail: values[7] || '',
+                                exitCriteria: values[8] || '',
+                                correct: values[9] || '',
+                                memo: values[10] || ''
+                            };
+                            trades.push(trade);
+                        }
+                    }
+
+                    return trades;
+                };
+
+                const handleFileSelect = (event) => {
+                    const file = event.target.files[0];
+                    if (file && file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const text = e.target.result;
+                            tradeData.value = parseCSV(text);
+                            nextTick(() => {
+                                updateResultsChart();
+                            });
+                        };
+                        reader.readAsText(file, 'UTF-8');
+                    }
+                };
+
+                const handleFileDrop = (event) => {
+                    isDragOver.value = false;
+                    const file = event.dataTransfer.files[0];
+                    if (file && (file.type === 'text/csv' || file.name.endsWith('.csv'))) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const text = e.target.result;
+                            tradeData.value = parseCSV(text);
+                            nextTick(() => {
+                                updateResultsChart();
+                            });
+                        };
+                        reader.readAsText(file, 'UTF-8');
+                    }
+                };
+
+                // Trade Statistics
+                const tradeStats = computed(() => {
+                    if (tradeData.value.length === 0) {
+                        return {
+                            totalTrades: 0,
+                            winTrades: 0,
+                            lossTrades: 0,
+                            breakEvenTrades: 0,
+                            effectiveTrades: 0,
+                            winRate: 0,
+                            profitFactor: 0,
+                            correctTradeRate: 0
+                        };
+                    }
+
+                    const winTrades = tradeData.value.filter(t => t.result === '利確').length;
+                    const lossTrades = tradeData.value.filter(t => t.result === '損切り').length;
+                    const breakEvenTrades = tradeData.value.filter(t => t.result === '建値撤退').length;
+                    const effectiveTrades = winTrades + lossTrades;
+                    const winRate = effectiveTrades > 0 ? (winTrades / effectiveTrades) * 100 : 0;
+                    const profitFactor = lossTrades > 0 ? winTrades / lossTrades : winTrades > 0 ? Infinity : 0;
+                    const correctTrades = tradeData.value.filter(t => t.correct === '⭕️').length;
+                    const correctTradeRate = tradeData.value.length > 0 ? (correctTrades / tradeData.value.length) * 100 : 0;
+
+                    return {
+                        totalTrades: tradeData.value.length,
+                        winTrades,
+                        lossTrades,
+                        breakEvenTrades,
+                        effectiveTrades,
+                        winRate,
+                        profitFactor: isFinite(profitFactor) ? profitFactor : 999,
+                        correctTradeRate
+                    };
+                });
+
+                // Currency Pair Statistics
+                const currencyPairStats = computed(() => {
+                    const stats = {};
+                    tradeData.value.forEach(trade => {
+                        if (!stats[trade.currency]) {
+                            stats[trade.currency] = {
+                                total: 0,
+                                win: 0,
+                                loss: 0,
+                                breakEven: 0,
+                                winRate: 0
+                            };
+                        }
+                        stats[trade.currency].total++;
+                        if (trade.result === '利確') stats[trade.currency].win++;
+                        else if (trade.result === '損切り') stats[trade.currency].loss++;
+                        else if (trade.result === '建値撤退') stats[trade.currency].breakEven;
+                    });
+
+                    Object.keys(stats).forEach(pair => {
+                        const effective = stats[pair].win + stats[pair].loss;
+                        stats[pair].winRate = effective > 0 ? (stats[pair].win / effective) * 100 : 0;
+                    });
+
+                    return stats;
+                });
+
+                // Unique Currencies
+                const uniqueCurrencies = computed(() => {
+                    const currencies = new Set(tradeData.value.map(t => t.currency));
+                    return Array.from(currencies).sort();
+                });
+
+                // Filtered Trades
+                const filteredTrades = computed(() => {
+                    let filtered = [...tradeData.value];
+                    if (filterCurrency.value) {
+                        filtered = filtered.filter(t => t.currency === filterCurrency.value);
+                    }
+                    if (filterResult.value) {
+                        filtered = filtered.filter(t => t.result === filterResult.value);
+                    }
+                    return filtered.reverse(); // 最新順
+                });
+
+                const formatDate = (dateStr) => {
+                    if (!dateStr) return '-';
+                    const date = new Date(dateStr);
+                    if (isNaN(date.getTime())) return dateStr;
+                    return date.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                };
 
                 const formatCurrency = (value) => {
                     if (Math.abs(value) >= 100000000) {
@@ -970,21 +1391,195 @@
                     { deep: true }
                 );
 
+                // Results Chart
+                const initResultsChart = () => {
+                    if (!resultsChartCanvas.value) return;
+
+                    const ctx = resultsChartCanvas.value.getContext('2d');
+                    resultsChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [
+                                {
+                                    label: '累積勝率',
+                                    data: [],
+                                    borderColor: '#58a6ff',
+                                    backgroundColor: 'rgba(88, 166, 255, 0.1)',
+                                    borderWidth: 2,
+                                    fill: true,
+                                    tension: 0.1,
+                                    yAxisID: 'y',
+                                    pointRadius: 0,
+                                    pointHoverRadius: 6
+                                },
+                                {
+                                    label: '累積トレード数',
+                                    data: [],
+                                    borderColor: '#8b949e',
+                                    backgroundColor: 'rgba(139, 148, 158, 0.1)',
+                                    borderWidth: 1,
+                                    fill: false,
+                                    tension: 0.1,
+                                    yAxisID: 'y1',
+                                    pointRadius: 0,
+                                    pointHoverRadius: 4
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+                                    labels: {
+                                        color: '#8b949e',
+                                        usePointStyle: true,
+                                        padding: 20
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: '#21262d',
+                                    titleColor: '#e6edf3',
+                                    bodyColor: '#e6edf3',
+                                    borderColor: '#30363d',
+                                    borderWidth: 1,
+                                    padding: 12
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: {
+                                        color: 'rgba(48, 54, 61, 0.5)',
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        color: '#8b949e',
+                                        maxTicksLimit: 20
+                                    }
+                                },
+                                y: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    grid: {
+                                        color: 'rgba(48, 54, 61, 0.5)',
+                                        drawBorder: false
+                                    },
+                                    ticks: {
+                                        color: '#8b949e',
+                                        callback: function(value) {
+                                            return value.toFixed(1) + '%';
+                                        }
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: '勝率 (%)',
+                                        color: '#8b949e'
+                                    }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    grid: {
+                                        drawOnChartArea: false
+                                    },
+                                    ticks: {
+                                        color: '#8b949e'
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: 'トレード数',
+                                        color: '#8b949e'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                };
+
+                const updateResultsChart = () => {
+                    if (!resultsChart || tradeData.value.length === 0) return;
+
+                    const sortedTrades = [...tradeData.value].sort((a, b) => {
+                        const dateA = new Date(a.date);
+                        const dateB = new Date(b.date);
+                        return dateA - dateB;
+                    });
+
+                    let winCount = 0;
+                    let lossCount = 0;
+                    let totalCount = 0;
+                    const winRateData = [];
+                    const tradeCountData = [];
+                    const labels = [];
+
+                    sortedTrades.forEach((trade, index) => {
+                        totalCount++;
+                        if (trade.result === '利確') winCount++;
+                        else if (trade.result === '損切り') lossCount++;
+
+                        const effective = winCount + lossCount;
+                        const winRate = effective > 0 ? (winCount / effective) * 100 : 0;
+                        winRateData.push(winRate);
+                        tradeCountData.push(totalCount);
+                        labels.push(`${index + 1}回目`);
+                    });
+
+                    resultsChart.data.labels = labels;
+                    resultsChart.data.datasets[0].data = winRateData;
+                    resultsChart.data.datasets[1].data = tradeCountData;
+                    resultsChart.update('none');
+                };
+
+                watch(() => tradeData.value.length, () => {
+                    if (tradeData.value.length > 0) {
+                        nextTick(() => {
+                            if (!resultsChart) {
+                                initResultsChart();
+                            }
+                            updateResultsChart();
+                        });
+                    }
+                });
+
                 onMounted(() => {
                     nextTick(() => {
                         initChart();
+                        initResultsChart();
                     });
                 });
 
                 return {
                     chartCanvas,
+                    resultsChartCanvas,
+                    fileInput,
+                    activeTab,
+                    isDragOver,
+                    tradeData,
+                    filterCurrency,
+                    filterResult,
                     params,
                     calculated,
                     simulation,
                     fintokeiMonte,
+                    tradeStats,
+                    currencyPairStats,
+                    uniqueCurrencies,
+                    filteredTrades,
                     formatCurrency,
+                    formatDate,
                     updateAccountBalance,
-                    runSimulation
+                    runSimulation,
+                    handleFileSelect,
+                    handleFileDrop
                 };
             }
         }).mount('#app');
