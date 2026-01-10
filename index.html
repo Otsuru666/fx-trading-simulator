@@ -231,6 +231,10 @@
                             </div>
                             <span class="text-gray-400 w-6">%</span>
                         </div>
+                        <p class="text-xs text-gray-500 mt-1">
+                            💡 Fintokei攻略推奨: <span class="text-blue-400 font-medium">0.8%</span>
+                            （連敗しても失格にならない安全設定）
+                        </p>
                     </div>
 
                     <!-- リスクリワード -->
@@ -247,6 +251,20 @@
                             </div>
                         </div>
                         <p class="text-xs text-gray-500 mt-1">損失1に対して利益{{ params.riskReward.toFixed(1) }}</p>
+                    </div>
+
+                    <!-- 通貨ペア選択 -->
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">取引通貨ペア</label>
+                        <select v-model="params.currencyPair" class="number-input text-sm w-full">
+                            <option value="GOLD">GOLD (XAU/USD) - スプレッド 2.5pips</option>
+                            <option value="USD/JPY">USD/JPY - スプレッド 0.3pips</option>
+                            <option value="EUR/USD">EUR/USD - スプレッド 0.2pips</option>
+                            <option value="GBP/USD">GBP/USD - スプレッド 0.4pips</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">
+                            スプレッド・手数料・スリッページがシミュレーションに反映されます
+                        </p>
                     </div>
 
                     <!-- 月間エントリー回数 -->
@@ -476,6 +494,18 @@
                                 </p>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- 注記 -->
+                    <div class="mt-4 p-3 rounded-lg" style="background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.3);">
+                        <p class="text-blue-400 text-xs font-medium mb-1">📊 シミュレーション精度</p>
+                        <p class="text-xs text-gray-400 leading-relaxed">
+                            このシミュレーションには以下の現実的要素が含まれています：<br>
+                            • スプレッド（通貨ペア別）<br>
+                            • 手数料（往復6ドル ≈ 0.006%）<br>
+                            • スリッページ（0.01-0.02%のランダム）<br>
+                            • 連敗時の心理的影響（リスク微増モデル）
+                        </p>
                     </div>
                 </div>
 
@@ -838,8 +868,20 @@
                     winRate: 62.5,
                     breakEvenRate: 40,
                     profitShare: 80,
-                    tradingDaysPerMonth: 20
+                    tradingDaysPerMonth: 20,
+                    currencyPair: 'GOLD'
                 });
+
+                // 通貨ペア別のスプレッドコスト（%）
+                const spreadCosts = {
+                    'GOLD': 0.025,      // 2.5 pips
+                    'USD/JPY': 0.003,   // 0.3 pips
+                    'EUR/USD': 0.002,   // 0.2 pips
+                    'GBP/USD': 0.004    // 0.4 pips
+                };
+
+                // 手数料コスト (往復6ドル ≒ 0.006%)
+                const commissionCost = 0.006;
 
                 const simulation = reactive({
                     data: [],
@@ -896,6 +938,10 @@
                     const breakEvenProb = params.breakEvenRate / 100;
                     const winProb = params.winRate / 100;
 
+                    // コスト計算
+                    const spreadCost = spreadCosts[params.currencyPair] || 0.002;
+                    const slippageCost = () => 0.01 + Math.random() * 0.01; // 0.01-0.02%のランダム
+
                     const results = [];
                     let successCount = 0;
 
@@ -904,6 +950,7 @@
                         let dayCount = 0;
                         let failed = false;
                         let succeeded = false;
+                        let consecutiveLosses = 0; // 連敗カウント
                         const maxDays = 365; // 最大1年
 
                         while (!failed && !succeeded && dayCount < maxDays) {
@@ -915,15 +962,27 @@
                             for (let t = 0; t < tradesPerDay; t++) {
                                 const rand = Math.random();
 
+                                // 連敗時の心理的影響（リスク微増）
+                                const psychologicalRiskMultiplier = 1 + (consecutiveLosses * 0.05); // 連敗1回ごとに+5%
+                                const effectiveRisk = Math.min(riskPerTrade * psychologicalRiskMultiplier, riskPerTrade * 1.3); // 最大+30%
+
+                                // 総コスト（スプレッド + 手数料 + スリッページ）
+                                const totalCost = spreadCost + commissionCost + slippageCost();
+
                                 if (rand < breakEvenProb) {
-                                    // 建値撤退
-                                    continue;
+                                    // 建値撤退（コストのみ負担）
+                                    dailyPnL -= totalCost;
+                                    consecutiveLosses = 0;
                                 } else {
                                     const adjustedRand = (rand - breakEvenProb) / (1 - breakEvenProb);
                                     if (adjustedRand < winProb) {
-                                        dailyPnL += rewardPerTrade;
+                                        // 利確（コスト差し引き）
+                                        dailyPnL += (effectiveRisk * params.riskReward) - totalCost;
+                                        consecutiveLosses = 0;
                                     } else {
-                                        dailyPnL -= riskPerTrade;
+                                        // 損切り（コスト上乗せ）
+                                        dailyPnL -= effectiveRisk + totalCost;
+                                        consecutiveLosses++;
                                     }
                                 }
 
@@ -1196,6 +1255,11 @@
                     const riskPerTrade = params.accountBalance * (params.riskRate / 100);
                     const winAmount = riskPerTrade * params.riskReward;
 
+                    // コスト計算
+                    const spreadCost = spreadCosts[params.currencyPair] || 0.002;
+                    const slippageCost = () => 0.01 + Math.random() * 0.01; // 0.01-0.02%
+                    const totalCostPercent = spreadCost + commissionCost + 0.015; // 平均スリッページ
+
                     let balance = params.accountBalance;
                     let peak = balance;
                     let maxDrawdown = 0;
@@ -1204,15 +1268,19 @@
 
                     for (let i = 0; i < params.monthlyTrades; i++) {
                         const rand = Math.random() * 100;
+                        const costInYen = params.accountBalance * (totalCostPercent / 100);
 
                         if (rand < params.breakEvenRate) {
-                            // 建値撤退 - 損益なし
+                            // 建値撤退 - コストのみ負担
+                            balance -= costInYen;
                         } else {
                             const adjustedRand = (rand - params.breakEvenRate) / (100 - params.breakEvenRate) * 100;
                             if (adjustedRand < params.winRate) {
-                                balance += winAmount;
+                                // 利確 - コスト差し引き
+                                balance += winAmount - costInYen;
                             } else {
-                                balance -= riskPerTrade;
+                                // 損切り - コスト上乗せ
+                                balance -= riskPerTrade + costInYen;
                             }
                         }
 
