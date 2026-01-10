@@ -754,6 +754,124 @@
                     </div>
                 </div>
 
+                <!-- Period Stats -->
+                <div class="card p-6 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold">期間別成績</h3>
+                        <div class="flex gap-2" style="border-bottom: 1px solid var(--border-color);">
+                            <button @click="periodView = 'monthly'"
+                                    :class="['tab-btn', periodView === 'monthly' ? 'active' : '']"
+                                    style="padding: 8px 16px; font-size: 14px;">
+                                月次
+                            </button>
+                            <button @click="periodView = 'weekly'"
+                                    :class="['tab-btn', periodView === 'weekly' ? 'active' : '']"
+                                    style="padding: 8px 16px; font-size: 14px;">
+                                週次
+                            </button>
+                            <button @click="periodView = 'daily'"
+                                    :class="['tab-btn', periodView === 'daily' ? 'active' : '']"
+                                    style="padding: 8px 16px; font-size: 14px;">
+                                日次
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <!-- Monthly Stats -->
+                        <table v-if="periodView === 'monthly'" class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b" style="border-color: var(--border-color);">
+                                    <th class="text-left py-3 px-4 text-gray-400">年月</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">総数</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">利確</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">損切り</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">建値</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">勝率</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">PF</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(stats, period) in monthlyStats" :key="period"
+                                    class="border-b hover:bg-gray-800" style="border-color: var(--border-color);">
+                                    <td class="py-3 px-4 font-medium">{{ period }}</td>
+                                    <td class="text-right py-3 px-4">{{ stats.total }}</td>
+                                    <td class="text-right py-3 px-4 text-green-400">{{ stats.win }}</td>
+                                    <td class="text-right py-3 px-4 text-red-400">{{ stats.loss }}</td>
+                                    <td class="text-right py-3 px-4 text-yellow-400">{{ stats.breakEven }}</td>
+                                    <td class="text-right py-3 px-4" :class="stats.winRate >= 50 ? 'text-green-400' : 'text-red-400'">
+                                        {{ stats.winRate.toFixed(1) }}%
+                                    </td>
+                                    <td class="text-right py-3 px-4" :class="stats.profitFactor >= 1 ? 'text-green-400' : 'text-red-400'">
+                                        {{ stats.profitFactor.toFixed(2) }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Weekly Stats -->
+                        <table v-if="periodView === 'weekly'" class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b" style="border-color: var(--border-color);">
+                                    <th class="text-left py-3 px-4 text-gray-400">週</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">総数</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">利確</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">損切り</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">建値</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">勝率</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">PF</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(stats, period) in weeklyStats" :key="period"
+                                    class="border-b hover:bg-gray-800" style="border-color: var(--border-color);">
+                                    <td class="py-3 px-4 font-medium">{{ period }}</td>
+                                    <td class="text-right py-3 px-4">{{ stats.total }}</td>
+                                    <td class="text-right py-3 px-4 text-green-400">{{ stats.win }}</td>
+                                    <td class="text-right py-3 px-4 text-red-400">{{ stats.loss }}</td>
+                                    <td class="text-right py-3 px-4 text-yellow-400">{{ stats.breakEven }}</td>
+                                    <td class="text-right py-3 px-4" :class="stats.winRate >= 50 ? 'text-green-400' : 'text-red-400'">
+                                        {{ stats.winRate.toFixed(1) }}%
+                                    </td>
+                                    <td class="text-right py-3 px-4" :class="stats.profitFactor >= 1 ? 'text-green-400' : 'text-red-400'">
+                                        {{ stats.profitFactor.toFixed(2) }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Daily Stats -->
+                        <table v-if="periodView === 'daily'" class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b" style="border-color: var(--border-color);">
+                                    <th class="text-left py-3 px-4 text-gray-400">日付</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">総数</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">利確</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">損切り</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">建値</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">勝率</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">PF</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(stats, period) in dailyStats" :key="period"
+                                    class="border-b hover:bg-gray-800" style="border-color: var(--border-color);">
+                                    <td class="py-3 px-4 font-medium">{{ period }}</td>
+                                    <td class="text-right py-3 px-4">{{ stats.total }}</td>
+                                    <td class="text-right py-3 px-4 text-green-400">{{ stats.win }}</td>
+                                    <td class="text-right py-3 px-4 text-red-400">{{ stats.loss }}</td>
+                                    <td class="text-right py-3 px-4 text-yellow-400">{{ stats.breakEven }}</td>
+                                    <td class="text-right py-3 px-4" :class="stats.winRate >= 50 ? 'text-green-400' : 'text-red-400'">
+                                        {{ stats.winRate.toFixed(1) }}%
+                                    </td>
+                                    <td class="text-right py-3 px-4" :class="stats.profitFactor >= 1 ? 'text-green-400' : 'text-red-400'">
+                                        {{ stats.profitFactor.toFixed(2) }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Trade List -->
                 <div class="card p-6">
                     <div class="flex justify-between items-center mb-4">
@@ -845,6 +963,7 @@
                 const tradeData = ref([]);
                 const filterCurrency = ref('');
                 const filterResult = ref('');
+                const periodView = ref('monthly');
 
                 const params = reactive({
                     accountBalance: 20000000,
@@ -1195,6 +1314,157 @@
                     return Array.from(currencies).sort();
                 });
 
+                // Helper function to get week key (ISO week)
+                const getWeekKey = (date) => {
+                    const d = new Date(date);
+                    d.setHours(0, 0, 0, 0);
+                    d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+                    const week1 = new Date(d.getFullYear(), 0, 4);
+                    const weekNum = Math.ceil((((d - week1) / 86400000) + week1.getDay() + 1) / 7);
+                    const year = d.getFullYear();
+                    return `${year}年 第${weekNum}週`;
+                };
+
+                // Monthly Statistics
+                const monthlyStats = computed(() => {
+                    const stats = {};
+                    tradeData.value.forEach(trade => {
+                        const date = parseDate(trade.date);
+                        if (!date) return;
+                        
+                        const monthKey = `${date.getFullYear()}年${date.getMonth() + 1}月`;
+                        if (!stats[monthKey]) {
+                            stats[monthKey] = {
+                                total: 0,
+                                win: 0,
+                                loss: 0,
+                                breakEven: 0,
+                                winRate: 0,
+                                profitFactor: 0
+                            };
+                        }
+                        stats[monthKey].total++;
+                        if (trade.result === '利確') stats[monthKey].win++;
+                        else if (trade.result === '損切り') stats[monthKey].loss++;
+                        else if (trade.result === '建値撤退') stats[monthKey].breakEven++;
+                    });
+
+                    Object.keys(stats).forEach(month => {
+                        const effective = stats[month].win + stats[month].loss;
+                        stats[month].winRate = effective > 0 ? (stats[month].win / effective) * 100 : 0;
+                        stats[month].profitFactor = stats[month].loss > 0 ? stats[month].win / stats[month].loss : stats[month].win > 0 ? Infinity : 0;
+                        if (!isFinite(stats[month].profitFactor)) stats[month].profitFactor = 999;
+                    });
+
+                    // Sort by date descending
+                    return Object.keys(stats).sort((a, b) => {
+                        const matchA = a.match(/(\d+)年(\d+)/);
+                        const matchB = b.match(/(\d+)年(\d+)/);
+                        if (!matchA || !matchB) return 0;
+                        const yearA = parseInt(matchA[1]);
+                        const monthA = parseInt(matchA[2]);
+                        const yearB = parseInt(matchB[1]);
+                        const monthB = parseInt(matchB[2]);
+                        if (yearA !== yearB) return yearB - yearA;
+                        return monthB - monthA;
+                    }).reduce((sorted, key) => {
+                        sorted[key] = stats[key];
+                        return sorted;
+                    }, {});
+                });
+
+                // Weekly Statistics
+                const weeklyStats = computed(() => {
+                    const stats = {};
+                    tradeData.value.forEach(trade => {
+                        const date = parseDate(trade.date);
+                        if (!date) return;
+                        
+                        const weekKey = getWeekKey(date);
+                        if (!stats[weekKey]) {
+                            stats[weekKey] = {
+                                total: 0,
+                                win: 0,
+                                loss: 0,
+                                breakEven: 0,
+                                winRate: 0,
+                                profitFactor: 0
+                            };
+                        }
+                        stats[weekKey].total++;
+                        if (trade.result === '利確') stats[weekKey].win++;
+                        else if (trade.result === '損切り') stats[weekKey].loss++;
+                        else if (trade.result === '建値撤退') stats[weekKey].breakEven++;
+                    });
+
+                    Object.keys(stats).forEach(week => {
+                        const effective = stats[week].win + stats[week].loss;
+                        stats[week].winRate = effective > 0 ? (stats[week].win / effective) * 100 : 0;
+                        stats[week].profitFactor = stats[week].loss > 0 ? stats[week].win / stats[week].loss : stats[week].win > 0 ? Infinity : 0;
+                        if (!isFinite(stats[week].profitFactor)) stats[week].profitFactor = 999;
+                    });
+
+                    // Sort by date descending
+                    return Object.keys(stats).sort((a, b) => {
+                        const matchA = a.match(/(\d+)年\s*第(\d+)/);
+                        const matchB = b.match(/(\d+)年\s*第(\d+)/);
+                        if (!matchA || !matchB) return 0;
+                        const yearA = parseInt(matchA[1]);
+                        const weekA = parseInt(matchA[2]);
+                        const yearB = parseInt(matchB[1]);
+                        const weekB = parseInt(matchB[2]);
+                        if (yearA !== yearB) return yearB - yearA;
+                        return weekB - weekA;
+                    }).reduce((sorted, key) => {
+                        sorted[key] = stats[key];
+                        return sorted;
+                    }, {});
+                });
+
+                // Daily Statistics
+                const dailyStats = computed(() => {
+                    const stats = {};
+                    tradeData.value.forEach(trade => {
+                        const date = parseDate(trade.date);
+                        if (!date) return;
+                        
+                        const dayKey = date.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                        if (!stats[dayKey]) {
+                            stats[dayKey] = {
+                                total: 0,
+                                win: 0,
+                                loss: 0,
+                                breakEven: 0,
+                                winRate: 0,
+                                profitFactor: 0
+                            };
+                        }
+                        stats[dayKey].total++;
+                        if (trade.result === '利確') stats[dayKey].win++;
+                        else if (trade.result === '損切り') stats[dayKey].loss++;
+                        else if (trade.result === '建値撤退') stats[dayKey].breakEven++;
+                    });
+
+                    Object.keys(stats).forEach(day => {
+                        const effective = stats[day].win + stats[day].loss;
+                        stats[day].winRate = effective > 0 ? (stats[day].win / effective) * 100 : 0;
+                        stats[day].profitFactor = stats[day].loss > 0 ? stats[day].win / stats[day].loss : stats[day].win > 0 ? Infinity : 0;
+                        if (!isFinite(stats[day].profitFactor)) stats[day].profitFactor = 999;
+                    });
+
+                    // Sort by date descending
+                    return Object.keys(stats).sort((a, b) => {
+                        // dayKey format: "2025/12/03"
+                        const dateA = new Date(a.replace(/\//g, '-'));
+                        const dateB = new Date(b.replace(/\//g, '-'));
+                        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
+                        return dateB - dateA;
+                    }).reduce((sorted, key) => {
+                        sorted[key] = stats[key];
+                        return sorted;
+                    }, {});
+                });
+
                 // Filtered Trades
                 const filteredTrades = computed(() => {
                     let filtered = [...tradeData.value];
@@ -1207,10 +1477,17 @@
                     return filtered.reverse(); // 最新順
                 });
 
+                const parseDate = (dateStr) => {
+                    if (!dateStr) return null;
+                    // Handle "2025/12/03 17:00:00" format
+                    const datePart = dateStr.split(' ')[0];
+                    const date = new Date(datePart.replace(/\//g, '-'));
+                    return isNaN(date.getTime()) ? null : date;
+                };
+
                 const formatDate = (dateStr) => {
-                    if (!dateStr) return '-';
-                    const date = new Date(dateStr);
-                    if (isNaN(date.getTime())) return dateStr;
+                    const date = parseDate(dateStr);
+                    if (!date) return dateStr || '-';
                     return date.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
                 };
 
@@ -1554,8 +1831,9 @@
                     if (!resultsChart || tradeData.value.length === 0) return;
 
                     const sortedTrades = [...tradeData.value].sort((a, b) => {
-                        const dateA = new Date(a.date);
-                        const dateB = new Date(b.date);
+                        const dateA = parseDate(a.date);
+                        const dateB = parseDate(b.date);
+                        if (!dateA || !dateB) return 0;
                         return dateA - dateB;
                     });
 
@@ -1611,12 +1889,16 @@
                     tradeData,
                     filterCurrency,
                     filterResult,
+                    periodView,
                     params,
                     calculated,
                     simulation,
                     fintokeiMonte,
                     tradeStats,
                     currencyPairStats,
+                    monthlyStats,
+                    weeklyStats,
+                    dailyStats,
                     uniqueCurrencies,
                     filteredTrades,
                     formatCurrency,
