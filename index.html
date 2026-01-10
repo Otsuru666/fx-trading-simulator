@@ -644,13 +644,83 @@
 
         <!-- Results Tab -->
         <div v-show="activeTab === 'results'" class="space-y-6">
+            <!-- Google Sheets Integration -->
+            <div class="card p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Googleスプレッドシート連携
+                </h2>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">スプレッドシートID</label>
+                            <input type="text" v-model="googleSheetId" 
+                                   placeholder="1WkBTJe7q7c6FhgX7CSYLKrJihwGP0KGFW2n813aLQt4"
+                                   class="number-input">
+                            <p class="text-xs text-gray-500 mt-1">URLの /d/ と /edit の間の文字列</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">シート名</label>
+                            <input type="text" v-model="googleSheetName" 
+                                   placeholder="トレードノートAI分析用"
+                                   class="number-input">
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="loadFromGoogleSheets" 
+                                :disabled="isLoadingGoogleSheets"
+                                class="btn flex-1">
+                            <span class="flex items-center justify-center">
+                                <svg v-if="isLoadingGoogleSheets" class="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <svg v-else class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                {{ isLoadingGoogleSheets ? '読み込み中...' : 'スプレッドシートから読み込み' }}
+                            </span>
+                        </button>
+                        <button v-if="autoRefreshEnabled" @click="toggleAutoRefresh" 
+                                class="btn" style="background: linear-gradient(135deg, var(--accent-green) 0%, #2ea043 100%);">
+                            <span class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                自動更新: ON
+                            </span>
+                        </button>
+                        <button v-else @click="toggleAutoRefresh" 
+                                class="btn" style="background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);">
+                            <span class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                自動更新: OFF
+                            </span>
+                        </button>
+                    </div>
+                    <div v-if="lastUpdateTime" class="text-sm text-gray-400">
+                        <span class="text-green-400">✓</span> 最終更新: {{ formatDateTime(lastUpdateTime) }}
+                        <span v-if="autoRefreshEnabled" class="ml-2 text-blue-400">
+                            (次回更新まで {{ countdown }}秒)
+                        </span>
+                    </div>
+                    <div v-if="googleSheetError" class="p-3 rounded-lg" style="background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.3);">
+                        <p class="text-red-400 text-sm">⚠️ {{ googleSheetError }}</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- CSV Upload Section -->
             <div class="card p-6">
                 <h2 class="text-xl font-bold mb-4 flex items-center">
                     <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                     </svg>
-                    トレード実績CSV読み込み
+                    トレード実績CSV読み込み（手動）
                 </h2>
                 <div class="drop-zone" 
                      @click="fileInput.click()"
@@ -964,6 +1034,17 @@
                 const filterCurrency = ref('');
                 const filterResult = ref('');
                 const periodView = ref('monthly');
+                
+                // Google Sheets Integration
+                const googleSheetId = ref('1WkBTJe7q7c6FhgX7CSYLKrJihwGP0KGFW2n813aLQt4');
+                const googleSheetName = ref('トレードノートAI分析用');
+                const isLoadingGoogleSheets = ref(false);
+                const googleSheetError = ref('');
+                const autoRefreshEnabled = ref(false);
+                const lastUpdateTime = ref(null);
+                const countdown = ref(0);
+                let autoRefreshInterval = null;
+                let countdownInterval = null;
 
                 const params = reactive({
                     accountBalance: 20000000,
@@ -1237,12 +1318,101 @@
                         reader.onload = (e) => {
                             const text = e.target.result;
                             tradeData.value = parseCSV(text);
+                            googleSheetError.value = '';
                             nextTick(() => {
                                 updateResultsChart();
                             });
                         };
                         reader.readAsText(file, 'UTF-8');
                     }
+                };
+
+                // Google Sheets Integration
+                const loadFromGoogleSheets = async () => {
+                    if (!googleSheetId.value || !googleSheetName.value) {
+                        googleSheetError.value = 'スプレッドシートIDとシート名を入力してください';
+                        return;
+                    }
+
+                    isLoadingGoogleSheets.value = true;
+                    googleSheetError.value = '';
+
+                    try {
+                        // GoogleスプレッドシートのCSVエクスポートURL
+                        // 公開スプレッドシートの場合、このURLで直接CSVを取得可能
+                        const sheetNameEncoded = encodeURIComponent(googleSheetName.value);
+                        const url = `https://docs.google.com/spreadsheets/d/${googleSheetId.value}/gviz/tq?tqx=out:csv&sheet=${sheetNameEncoded}`;
+                        
+                        const response = await fetch(url);
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTPエラー: ${response.status} - スプレッドシートが公開設定になっているか確認してください`);
+                        }
+
+                        const text = await response.text();
+                        
+                        if (!text || text.trim().length === 0) {
+                            throw new Error('データが空です。シート名が正しいか確認してください');
+                        }
+
+                        tradeData.value = parseCSV(text);
+                        lastUpdateTime.value = new Date();
+                        googleSheetError.value = '';
+                        
+                        nextTick(() => {
+                            updateResultsChart();
+                        });
+                    } catch (error) {
+                        console.error('Google Sheets読み込みエラー:', error);
+                        googleSheetError.value = error.message || 'スプレッドシートの読み込みに失敗しました。スプレッドシートが公開設定（リンクを知っている全員が閲覧可）になっているか確認してください。';
+                    } finally {
+                        isLoadingGoogleSheets.value = false;
+                    }
+                };
+
+                const toggleAutoRefresh = () => {
+                    autoRefreshEnabled.value = !autoRefreshEnabled.value;
+                    
+                    if (autoRefreshEnabled.value) {
+                        // 自動更新を開始（30秒ごと）
+                        autoRefreshInterval = setInterval(() => {
+                            if (googleSheetId.value && googleSheetName.value) {
+                                loadFromGoogleSheets();
+                            }
+                        }, 30000);
+                        
+                        // カウントダウン表示
+                        countdown.value = 30;
+                        countdownInterval = setInterval(() => {
+                            countdown.value--;
+                            if (countdown.value <= 0) {
+                                countdown.value = 30;
+                            }
+                        }, 1000);
+                    } else {
+                        // 自動更新を停止
+                        if (autoRefreshInterval) {
+                            clearInterval(autoRefreshInterval);
+                            autoRefreshInterval = null;
+                        }
+                        if (countdownInterval) {
+                            clearInterval(countdownInterval);
+                            countdownInterval = null;
+                        }
+                        countdown.value = 0;
+                    }
+                };
+
+                const formatDateTime = (date) => {
+                    if (!date) return '';
+                    return date.toLocaleString('ja-JP', { 
+                        year: 'numeric', 
+                        month: '2-digit', 
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
                 };
 
                 // Trade Statistics
@@ -1873,6 +2043,13 @@
                     }
                 });
 
+                // Cleanup intervals when switching tabs
+                watch(() => activeTab.value, (newTab) => {
+                    if (newTab !== 'results' && autoRefreshEnabled.value) {
+                        toggleAutoRefresh();
+                    }
+                });
+
                 onMounted(() => {
                     nextTick(() => {
                         initChart();
@@ -1890,6 +2067,13 @@
                     filterCurrency,
                     filterResult,
                     periodView,
+                    googleSheetId,
+                    googleSheetName,
+                    isLoadingGoogleSheets,
+                    googleSheetError,
+                    autoRefreshEnabled,
+                    lastUpdateTime,
+                    countdown,
                     params,
                     calculated,
                     simulation,
@@ -1903,10 +2087,13 @@
                     filteredTrades,
                     formatCurrency,
                     formatDate,
+                    formatDateTime,
                     updateAccountBalance,
                     runSimulation,
                     handleFileSelect,
-                    handleFileDrop
+                    handleFileDrop,
+                    loadFromGoogleSheets,
+                    toggleAutoRefresh
                 };
             }
         }).mount('#app');
