@@ -767,6 +767,7 @@
                     <div class="stat-card">
                         <p class="text-xs text-gray-400 mb-1">建値撤退</p>
                         <p class="text-2xl font-bold text-yellow-400">{{ tradeStats.breakEvenTrades }}</p>
+                        <p class="text-sm text-yellow-300">({{ tradeStats.breakEvenRate.toFixed(1) }}%)</p>
                     </div>
                     <div class="stat-card">
                         <p class="text-xs text-gray-400 mb-1">有効トレード</p>
@@ -1423,6 +1424,7 @@
                             winTrades: 0,
                             lossTrades: 0,
                             breakEvenTrades: 0,
+                            breakEvenRate: 0,
                             effectiveTrades: 0,
                             winRate: 0,
                             profitFactor: 0,
@@ -1439,11 +1441,14 @@
                     const correctTrades = tradeData.value.filter(t => t.correct === '⭕️').length;
                     const correctTradeRate = tradeData.value.length > 0 ? (correctTrades / tradeData.value.length) * 100 : 0;
 
+                    const breakEvenRate = tradeData.value.length > 0 ? (breakEvenTrades / tradeData.value.length) * 100 : 0;
+
                     return {
                         totalTrades: tradeData.value.length,
                         winTrades,
                         lossTrades,
                         breakEvenTrades,
+                        breakEvenRate,
                         effectiveTrades,
                         winRate,
                         profitFactor: isFinite(profitFactor) ? profitFactor : 999,
