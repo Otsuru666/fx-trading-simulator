@@ -721,12 +721,14 @@
                     <!-- 現在の残高（金額入力） -->
                     <div class="mb-6">
                         <label class="block text-sm text-gray-400 mb-2">現在の残高（金額入力）</label>
-                        <div class="flex items-center gap-3">
-                            <input type="text" :value="formatCurrency(recoveryParams.currentBalance)"
-                                   @input="updateDrawdownFromBalance(Number($event.target.value.replace(/[^0-9]/g, '')) * 10000)"
-                                   class="number-input flex-1 text-right">
+                        <div class="flex items-center gap-2">
+                            <input type="number" :value="Math.round(recoveryParams.currentBalance / 10000)"
+                                   @input="updateDrawdownFromBalance(Number($event.target.value) * 10000)"
+                                   class="number-input flex-1 text-right"
+                                   step="1" min="0">
+                            <span class="text-gray-400 text-sm w-12">万円</span>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">初期資金: {{ formatCurrency(recoveryParams.planBalance) }}</p>
+                        <p class="text-xs text-gray-500 mt-1">初期資金: {{ Math.round(recoveryParams.planBalance / 10000) }}万円</p>
                     </div>
 
                     <!-- DD率に応じたリスク率ルール -->
@@ -1395,9 +1397,9 @@
                     accountBalance: 20000000,
                     riskRate: 0.8,
                     riskReward: 1.1,
-                    monthlyTrades: 50,
-                    winRate: 62.5,
-                    breakEvenRate: 40,
+                    monthlyTrades: 35,
+                    winRate: 60,
+                    breakEvenRate: 30,
                     profitShare: 80,
                     tradingDaysPerMonth: 20
                 });
