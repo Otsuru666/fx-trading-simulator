@@ -82,6 +82,25 @@
             border-color: var(--accent-blue);
         }
 
+        .plan-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .plan-btn:hover {
+            border-color: var(--accent-blue);
+        }
+        .plan-btn-active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--accent-blue);
+        }
+
         .stat-card {
             background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
             border: 1px solid var(--border-color);
@@ -203,9 +222,22 @@
                         入力パラメータ
                     </h2>
 
-                    <!-- 口座資金 -->
+                    <!-- Fintokeiプラン選択 -->
                     <div class="mb-6">
-                        <label class="block text-sm text-gray-400 mb-2">口座資金</label>
+                        <label class="block text-sm text-gray-400 mb-2">Fintokeiプラン</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button v-for="plan in fintokeiPlans" :key="plan.name"
+                                    @click="selectPlan(plan)"
+                                    :class="['plan-btn', params.accountBalance === plan.balance ? 'plan-btn-active' : '']">
+                                <span class="text-xs font-medium">{{ plan.name }}</span>
+                                <span class="text-xs text-gray-400">{{ formatCurrency(plan.balance) }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 口座資金（カスタム） -->
+                    <div class="mb-6">
+                        <label class="block text-sm text-gray-400 mb-2">口座資金（カスタム）</label>
                         <div class="flex items-center gap-3">
                             <input type="range" v-model.number="params.accountBalance"
                                    min="1000000" max="100000000" step="1000000"
@@ -1083,6 +1115,21 @@
 
                 // 手数料コスト（往復6ドル ≈ 0.006%）
                 const commissionCost = 0.006;
+
+                // Fintokeiプランデータ
+                const fintokeiPlans = [
+                    { name: 'Crystal', balance: 2000000 },
+                    { name: 'Pearl', balance: 5000000 },
+                    { name: 'Ruby', balance: 10000000 },
+                    { name: 'Sapphire', balance: 20000000 },
+                    { name: 'Topaz', balance: 35000000 },
+                    { name: 'Emerald', balance: 50000000 }
+                ];
+
+                // プラン選択関数
+                const selectPlan = (plan) => {
+                    params.accountBalance = plan.balance;
+                };
 
                 const simulation = reactive({
                     data: [],
@@ -2130,6 +2177,8 @@
                     lastUpdateTime,
                     countdown,
                     params,
+                    fintokeiPlans,
+                    selectPlan,
                     calculated,
                     simulation,
                     fintokeiMonte,
