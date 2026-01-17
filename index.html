@@ -753,6 +753,12 @@
                             {{ tradeStats.winRate.toFixed(1) }}%
                         </p>
                     </div>
+                    <div class="stat-card" :class="tradeStats.winRateIncludingBreakEven >= 50 ? 'glow-green' : 'glow-red'">
+                        <p class="text-xs text-gray-400 mb-1">勝率（建値含む）</p>
+                        <p class="text-2xl font-bold" :class="tradeStats.winRateIncludingBreakEven >= 50 ? 'positive' : 'negative'">
+                            {{ tradeStats.winRateIncludingBreakEven.toFixed(1) }}%
+                        </p>
+                    </div>
                     <div class="stat-card">
                         <p class="text-xs text-gray-400 mb-1">利確</p>
                         <p class="text-2xl font-bold text-green-400">{{ tradeStats.winTrades }}</p>
@@ -782,6 +788,14 @@
                     <div class="stat-card">
                         <p class="text-xs text-gray-400 mb-1">正しいトレード率</p>
                         <p class="text-2xl font-bold text-blue-400">{{ tradeStats.correctTradeRate.toFixed(1) }}%</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">最大連勝</p>
+                        <p class="text-2xl font-bold text-green-400">{{ tradeStats.maxWinStreak }}</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-xs text-gray-400 mb-1">最大連敗</p>
+                        <p class="text-2xl font-bold text-red-400">{{ tradeStats.maxLoseStreak }}</p>
                     </div>
                 </div>
 
@@ -1427,8 +1441,11 @@
                             breakEvenRate: 0,
                             effectiveTrades: 0,
                             winRate: 0,
+                            winRateIncludingBreakEven: 0,
                             profitFactor: 0,
-                            correctTradeRate: 0
+                            correctTradeRate: 0,
+                            maxWinStreak: 0,
+                            maxLoseStreak: 0
                         };
                     }
 
@@ -1437,11 +1454,35 @@
                     const breakEvenTrades = tradeData.value.filter(t => t.result === '建値撤退').length;
                     const effectiveTrades = winTrades + lossTrades;
                     const winRate = effectiveTrades > 0 ? (winTrades / effectiveTrades) * 100 : 0;
+                    const winRateIncludingBreakEven = tradeData.value.length > 0
+                        ? ((winTrades + breakEvenTrades) / tradeData.value.length) * 100
+                        : 0;
                     const profitFactor = lossTrades > 0 ? winTrades / lossTrades : winTrades > 0 ? Infinity : 0;
                     const correctTrades = tradeData.value.filter(t => t.correct === '⭕️').length;
                     const correctTradeRate = tradeData.value.length > 0 ? (correctTrades / tradeData.value.length) * 100 : 0;
 
                     const breakEvenRate = tradeData.value.length > 0 ? (breakEvenTrades / tradeData.value.length) * 100 : 0;
+
+                    // 最大連勝・連敗を計算（日付昇順でソート、建値撤退は無視）
+                    const sortedTrades = [...tradeData.value].sort((a, b) => {
+                        const dateA = new Date(a.date.replace(/\//g, '-'));
+                        const dateB = new Date(b.date.replace(/\//g, '-'));
+                        return dateA - dateB;
+                    });
+                    let maxWinStreak = 0, maxLoseStreak = 0;
+                    let currentWinStreak = 0, currentLoseStreak = 0;
+                    sortedTrades.forEach(trade => {
+                        if (trade.result === '利確') {
+                            currentWinStreak++;
+                            currentLoseStreak = 0;
+                            maxWinStreak = Math.max(maxWinStreak, currentWinStreak);
+                        } else if (trade.result === '損切り') {
+                            currentLoseStreak++;
+                            currentWinStreak = 0;
+                            maxLoseStreak = Math.max(maxLoseStreak, currentLoseStreak);
+                        }
+                        // 建値撤退は連勝・連敗をリセットしない
+                    });
 
                     return {
                         totalTrades: tradeData.value.length,
@@ -1451,8 +1492,11 @@
                         breakEvenRate,
                         effectiveTrades,
                         winRate,
+                        winRateIncludingBreakEven,
                         profitFactor: isFinite(profitFactor) ? profitFactor : 999,
-                        correctTradeRate
+                        correctTradeRate,
+                        maxWinStreak,
+                        maxLoseStreak
                     };
                 });
 
