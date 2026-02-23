@@ -246,8 +246,8 @@
                             <input type="range" v-model.number="params.accountBalance"
                                    min="1000000" max="100000000" step="1000000"
                                    class="input-range flex-1">
-                            <div class="w-32">
-                                <input type="text" :value="formatCurrency(params.accountBalance)"
+                            <div class="w-44">
+                                <input type="text" :value="params.accountBalance.toLocaleString('ja-JP') + '円'"
                                        @input="updateAccountBalance" class="number-input text-right text-sm">
                             </div>
                         </div>
