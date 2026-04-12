@@ -365,6 +365,58 @@
                     </button>
                 </div>
 
+                <!-- 目標収入からの逆算 -->
+                <div class="card p-6 mt-6">
+                    <h3 class="text-lg font-bold mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path>
+                        </svg>
+                        目標収入から逆算
+                    </h3>
+
+                    <div class="mb-4">
+                        <label class="block text-sm text-gray-400 mb-2">稼ぎたい月収（手取り）</label>
+                        <div class="flex items-center gap-3">
+                            <div class="flex-1">
+                                <input type="text" :value="desiredIncome.toLocaleString('ja-JP') + '円'"
+                                       @input="updateDesiredIncome" class="number-input text-right text-sm">
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <button v-for="preset in [500000, 1000000, 2000000, 3000000, 5000000]" :key="preset"
+                                    @click="desiredIncome = preset"
+                                    :class="['text-xs px-2 py-1 rounded', desiredIncome === preset ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600']">
+                                {{ formatCurrency(preset) }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 逆算結果 -->
+                    <div v-if="reverseCalc.impossible" class="p-4 rounded-lg" style="background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.3);">
+                        <p class="text-red-400 text-sm font-medium">現在の設定では利益が出ません</p>
+                        <p class="text-gray-400 text-xs mt-1">勝率・リスクリワードを見直してください</p>
+                    </div>
+                    <div v-else class="space-y-3">
+                        <div class="p-4 rounded-lg" style="background: rgba(63, 185, 80, 0.1); border: 1px solid rgba(63, 185, 80, 0.3);">
+                            <p class="text-xs text-gray-400 mb-1">必要な口座残高</p>
+                            <p class="text-2xl font-bold text-green-400">{{ formatCurrency(reverseCalc.requiredBalance) }}</p>
+                        </div>
+                        <div v-if="reverseCalc.matchedPlan" class="p-3 rounded-lg" style="background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.3);">
+                            <p class="text-xs text-gray-400 mb-1">おすすめFintokeiプラン</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-blue-400 font-bold">{{ reverseCalc.matchedPlan.name }}</span>
+                                <span class="text-sm text-gray-300">{{ formatCurrency(reverseCalc.matchedPlan.balance) }}</span>
+                            </div>
+                        </div>
+                        <div v-else class="p-3 rounded-lg" style="background: rgba(210, 153, 34, 0.1); border: 1px solid rgba(210, 153, 34, 0.3);">
+                            <p class="text-xs text-yellow-400">必要残高がFintokei最大プランを超えています</p>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-2">
+                            ※ 上記の入力パラメータ（リスク率・RR・勝率・建値撤退率・利益配分率）を基に算出
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Fintokei Simulation -->
                 <div class="card p-6 mt-6">
                     <h3 class="text-lg font-bold mb-4 flex items-center">
@@ -1404,6 +1456,9 @@
                     tradingDaysPerMonth: 20
                 });
 
+                // 目標収入からの逆算
+                const desiredIncome = ref(1000000);
+
                 // スプレッドコスト（固定: 平均0.4 pips相当）
                 const spreadCost = 0.004;
 
@@ -1655,6 +1710,36 @@
                         profitFactor: isFinite(profitFactor) ? profitFactor : 999
                     };
                 });
+
+                // 目標収入からの逆算
+                const reverseCalc = computed(() => {
+                    const breakEvenTrades = Math.round(params.monthlyTrades * (params.breakEvenRate / 100));
+                    const effectiveTrades = params.monthlyTrades - breakEvenTrades;
+                    const winTrades = Math.round(effectiveTrades * (params.winRate / 100));
+                    const loseTrades = effectiveTrades - winTrades;
+
+                    // 月利率 = (riskRate/100) × (winTrades × riskReward - loseTrades)
+                    const monthlyReturnRate = (params.riskRate / 100) * (winTrades * params.riskReward - loseTrades);
+
+                    if (monthlyReturnRate <= 0) {
+                        return { requiredBalance: null, matchedPlan: null, impossible: true };
+                    }
+
+                    // traderIncome = accountBalance × monthlyReturnRate × (profitShare/100)
+                    const requiredBalance = Math.ceil(desiredIncome.value / (monthlyReturnRate * (params.profitShare / 100)));
+
+                    // 最も近いFintokeiプラン（必要残高以上の最小プラン）
+                    const matchedPlan = fintokeiPlans.find(p => p.balance >= requiredBalance) || null;
+
+                    return { requiredBalance, matchedPlan, impossible: false };
+                });
+
+                const updateDesiredIncome = (e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    if (value) {
+                        desiredIncome.value = parseInt(value);
+                    }
+                };
 
                 // Fintokei モンテカルロシミュレーション
                 const runFintokeiPhase = (targetPercent, iterations = 500) => {
@@ -2673,6 +2758,9 @@
                     dailyStats,
                     uniqueCurrencies,
                     filteredTrades,
+                    desiredIncome,
+                    reverseCalc,
+                    updateDesiredIncome,
                     formatCurrency,
                     formatDate,
                     formatDateTime,
